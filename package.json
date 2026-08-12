@@ -1,0 +1,40 @@
+{
+  "name": "nvim-ui-mcp",
+  "version": "0.1.0",
+  "description": "Playwright for Neovim agents — an MCP server that observes and drives the real rendered Neovim UI.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "nvim-ui-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "smoke": "tsx test/smoke/rpc-attach.ts",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "neovim": "^5.4.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.18.12",
+    "eslint": "^9.39.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vitest": "^3.2.4"
+  }
+}
