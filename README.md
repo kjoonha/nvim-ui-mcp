@@ -1,38 +1,72 @@
+<div align="center">
+
 # nvim-ui-mcp
 
 **Playwright for Neovim agents.**
 
-`nvim-ui-mcp` lets AI agents **see, interact with, and verify the actual Neovim UI** through the Model Context Protocol.
+An MCP server that lets AI agents *see, act on, and verify* the real, rendered Neovim UI —
+not just buffer text and API state.
 
-Unlike existing Neovim MCP servers that primarily expose buffers, diagnostics, and editor APIs, `nvim-ui-mcp` attaches as a real Neovim UI client and observes the rendered screen — including windows, floating UIs, highlights, virtual text, completion menus, messages, and cursor state.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-brightgreen.svg)](https://nodejs.org)
+[![Neovim](https://img.shields.io/badge/neovim-0.10%2B-57A143.svg)](https://neovim.io)
+[![npm](https://img.shields.io/npm/v/nvim-ui-mcp.svg)](https://www.npmjs.com/package/nvim-ui-mcp)
 
-This enables coding agents to do more than operate Neovim: they can **reproduce UI bugs, test plugin behavior, interact with complex workflows, and verify visual results autonomously.**
-
-Think **Playwright, but for Neovim plugin development.**
+</div>
 
 ---
 
+<p align="center">
+Most Neovim MCP servers expose buffers, diagnostics, and editor APIs.<br>
+<code>nvim-ui-mcp</code> attaches as a real Neovim UI client and hands the agent the
+<b>rendered screen</b> — windows, floats, completion menus, cursor, and mode —
+so it can reproduce bugs, drive plugin workflows, and verify visual results
+the same way a human staring at a terminal would.
+</p>
+
+<p align="center">Think <b>Playwright, but for Neovim.</b></p>
+
+## Table of Contents
+
+<ul>
+  <li><a href="#requirements">Requirements</a></li>
+  <li><a href="#installation">Installation</a></li>
+  <li><a href="#mcp-client-configuration">MCP Client Configuration</a></li>
+  <li><a href="#tools">Tools</a></li>
+  <li><a href="#usage">Usage</a></li>
+  <li><a href="#gotchas">Gotchas</a></li>
+  <li><a href="#attach-mode">Attach Mode</a></li>
+  <li><a href="#development">Development</a></li>
+  <li><a href="#license">License</a></li>
+</ul>
+
 ## Requirements
 
-- **Neovim 0.10+** on `PATH`
-- **Node.js 22+**
-- Linux, macOS, or Windows
+<table>
+  <tr><td><b>Neovim</b></td><td>0.10+, on <code>PATH</code></td></tr>
+  <tr><td><b>Node.js</b></td><td>22+</td></tr>
+  <tr><td><b>OS</b></td><td>Linux, macOS, or Windows</td></tr>
+</table>
 
-## Install
+## Installation
 
 ```bash
 npm install -g nvim-ui-mcp
 ```
 
-## MCP client configuration
+## MCP Client Configuration
 
-Claude Code:
+<details open>
+<summary><b>Claude Code</b></summary>
 
 ```bash
 claude mcp add nvim-ui -- npx -y nvim-ui-mcp
 ```
 
-Or, for any client that reads a JSON config (`claude_desktop_config.json`, `.mcp.json`, …):
+</details>
+
+<details>
+<summary><b>Any JSON-config client</b> (<code>claude_desktop_config.json</code>, <code>.mcp.json</code>, …)</summary>
 
 ```json
 {
@@ -45,18 +79,27 @@ Or, for any client that reads a JSON config (`claude_desktop_config.json`, `.mcp
 }
 ```
 
+</details>
+
 ## Tools
 
-| Tool | Purpose |
-|---|---|
-| `nvim_launch` | Start an isolated, disposable Neovim this server owns |
-| `nvim_attach` | Attach to a running Neovim via its `--listen` address |
-| `nvim_observe` | Rendered screen + cursor, mode, size, buffer/window, float geometry |
-| `nvim_observe_diff` | Only what changed since the last observation |
-| `nvim_input` | Send keys in Neovim notation (`ihello<Esc>`, `<C-n>`, …) |
-| `nvim_command` | Run an Ex command |
-| `nvim_wait` | Block until a screen condition holds |
-| `nvim_close` | Terminate a launched instance (refuses attach-mode sessions) |
+Exactly 8 tools — deliberately not a generic `nvim_*` API wrapper.
+
+<table>
+  <thead>
+    <tr><th>Tool</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>nvim_launch</code></td><td>Start an isolated, disposable Neovim this server owns</td></tr>
+    <tr><td><code>nvim_attach</code></td><td>Attach to a running Neovim via its <code>--listen</code> address</td></tr>
+    <tr><td><code>nvim_observe</code></td><td>Rendered screen + cursor, mode, size, buffer/window, float geometry</td></tr>
+    <tr><td><code>nvim_observe_diff</code></td><td>Only what changed since the last observation</td></tr>
+    <tr><td><code>nvim_input</code></td><td>Send keys in Neovim notation (<code>ihello&lt;Esc&gt;</code>, <code>&lt;C-n&gt;</code>, …)</td></tr>
+    <tr><td><code>nvim_command</code></td><td>Run an Ex command</td></tr>
+    <tr><td><code>nvim_wait</code></td><td>Block until a screen condition holds</td></tr>
+    <tr><td><code>nvim_close</code></td><td>Terminate a launched instance (refuses attach-mode sessions)</td></tr>
+  </tbody>
+</table>
 
 ## Usage
 
@@ -74,7 +117,7 @@ nvim_observe { "sessionId": "nvim-1" }
 // 3. Act
 nvim_input   { "sessionId": "nvim-1", "keys": "ihello world<Esc>" }
 
-// 4. Synchronize before looking again — see the note below
+// 4. Synchronize before looking again — see Gotchas below
 nvim_wait    { "sessionId": "nvim-1", "condition": "contains", "text": "hello world" }
 
 // 5. Verify, cheaply
@@ -84,23 +127,38 @@ nvim_observe_diff { "sessionId": "nvim-1" }
 nvim_close   { "sessionId": "nvim-1" }
 ```
 
-### Always wait before observing
+## Gotchas
+
+<details open>
+<summary><b>Always wait before observing</b></summary>
+<br>
 
 `nvim_input` and `nvim_command` return as soon as Neovim accepts the request — **not** when the
 screen has repainted. Observing immediately races the redraw.
 
-Prefer `contains` / `not-contains` whenever you know what should appear: they test current screen
-content, so they work whether the redraw lands before or after the wait starts. `redraw`,
-`screen-change` and `idle` are edge-triggered and can miss a repaint that already happened — use
-`idle` only when you cannot predict the resulting text.
+</details>
 
-### Observing floating windows
+<details open>
+<summary><b>Prefer level-triggered waits</b></summary>
+<br>
 
-Neovim composites floats into a single grid, so popup and float content is already in `screen`. The
-`floats` array from `nvim_observe` reports each float's `row`, `col`, `width` and `height`, which is
-how you tell a completion popup from buffer text at the same coordinates.
+`contains` / `not-contains` test current screen content, so they work whether the redraw lands
+before or after the wait started. `redraw`, `screen-change`, and `idle` are edge-triggered and can
+miss a repaint that already happened — use `idle` only when you cannot predict the resulting text.
 
-### Attach mode
+</details>
+
+<details>
+<summary><b>Floating windows are already in <code>screen</code></b></summary>
+<br>
+
+Neovim composites floats into a single grid, so popup and float content is already in the
+rendered text. The `floats` array from `nvim_observe` reports each float's `row`, `col`, `width`,
+and `height` — how you tell a completion popup from buffer text at the same coordinates.
+
+</details>
+
+## Attach Mode
 
 ```bash
 nvim --listen /tmp/nvim.sock
@@ -110,8 +168,8 @@ nvim --listen /tmp/nvim.sock
 nvim_attach { "address": "/tmp/nvim.sock" }
 ```
 
-The instance belongs to you, so `nvim_close` refuses it. Note that Neovim sizes the screen to the
-smallest attached UI, so requesting a size can shrink your own view.
+The instance belongs to you, so `nvim_close` refuses it. Neovim sizes the screen to the smallest
+attached UI, so requesting a size can shrink your own view.
 
 ## Development
 
@@ -127,4 +185,4 @@ See [DESIGN.md](./DESIGN.md) for the architecture, the UI event pipeline, and th
 
 ## License
 
-MIT
+<a href="./LICENSE">MIT</a>
