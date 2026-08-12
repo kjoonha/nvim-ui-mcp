@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const tsxBin = join(repoRoot, 'node_modules', '.bin', 'tsx');
+// Spawn tsx's JS CLI directly with `node` rather than the node_modules/.bin shim —
+// on Windows the shim is a `.cmd` batch file, which spawn() can't exec without
+// `shell: true`.
+const tsxCli = join(repoRoot, 'node_modules', 'tsx', 'dist', 'cli.mjs');
 const entry = join(repoRoot, 'src', 'index.ts');
 
 export interface ToolCallResult {
@@ -39,7 +42,7 @@ export class McpTestClient {
   }
 
   static async start(): Promise<McpTestClient> {
-    const proc = spawn(tsxBin, [entry], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const proc = spawn(process.execPath, [tsxCli, entry], { stdio: ['pipe', 'pipe', 'pipe'] });
     const client = new McpTestClient(proc);
     await client.#request('initialize', {
       protocolVersion: '2025-06-18',
